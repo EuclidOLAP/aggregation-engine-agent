@@ -1,4 +1,5 @@
 const net = require('net');
+const command = require('./command');
 
 const clients = [];
 
@@ -44,6 +45,23 @@ const server = net.createServer((socket) => {
 
         // 打印消息的长度和类别
         console.log(`Received message with length: ${message.length} and category: ${message.category}`);
+
+        if (command.INTENT__WORKER_JOINS_CLUSTER === message.category) {
+          // 新的 VCE Worked 节点加入集群，需要返回一个 INTENT__ALLOW 类型的消息
+          // 在这里返回一个响应数据，按照要求的格式
+          const response = Buffer.alloc(6); // 创建一个6字节的缓冲区
+          response.writeUInt32LE(6, 0);  // 4字节：表示数字6的无符号int（小端模式）
+          response.writeUInt16LE(command.INTENT__ALLOW, 4);  // 2字节：表示数字2的无符号int（小端模式）
+
+          // 发送响应给客户端
+          socket.write(response, (err) => {
+            if (err) {
+              console.error('Error sending data:', err);
+            } else {
+              console.log('::::::::::::::>>>>>>>>>>>>>>>>>> Response sent to client --------------------');
+            }
+          });
+        }
 
         // // 打印消息内容（如果是文本数据，可以转换为字符串）
         // console.log('Message bytes:', message.bytes.toString());
