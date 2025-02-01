@@ -2,40 +2,65 @@ const net = require('net');
 
 const clients = [];
 
-// index.js
-console.log('Aggregation Engine Agent is running.............................................................!');
+// 定义消息的数据结构
+class Message {
+  constructor(length, category, bytes) {
+    this.length = length;      // 消息的总长度
+    this.category = category;  // 消息类别
+    this.bytes = bytes;        // 消息的字节流
+  }
+}
 
-// // 持续运行进程
-// setInterval(() => {
-//   console.log('>> Aggregation Engine Agent << running...');
-// }, 1000);
+console.log('Aggregation Engine Agent is running.............................................................!');
 
 // 创建TCP服务器
 const server = net.createServer((socket) => {
   // the function will be run when a client connects to the server
   console.log('>>>>> >>>> >>> >> > ----------------- New client connected');
-  
+
   // 将客户端连接保存到数组中
   clients.push(socket);
 
-  // // 监听客户端发送的数据
-  // socket.on('connect', (data) => {
-  //   console.log('>>>>> >>>> >>> >> > connected data:', data.toString());
-    
-  //   // 你可以在这里处理客户端发来的数据
-  // });
+  let buffer = Buffer.alloc(0);
 
   // 监听客户端发送的数据
   socket.on('data', (data) => {
-    console.log('Received data ######################################:', data.toString());
-    
+
     // 你可以在这里处理客户端发来的数据
+    buffer = Buffer.concat([buffer, data]);  // 将新接收到的数据附加到缓冲区
+
+    while (buffer.length >= 6) {  // 至少需要6个字节来读取消息的长度和类别字段
+
+      const messageLength = buffer.readUInt32LE(0);  // 读取消息长度（4字节）
+      const messageCategory = buffer.readUInt16LE(4);  // 读取消息类别（2字节）
+
+      // 如果缓冲区的长度足够包含整个消息（包括长度、类别和消息内容）
+      if (buffer.length >= messageLength) {
+        // 提取完整的消息字节
+        const messageBytes = buffer.slice(0, messageLength);
+
+        // 创建消息数据结构
+        const message = new Message(messageLength, messageCategory, messageBytes);
+
+        // 打印消息的长度和类别
+        console.log(`Received message with length: ${message.length} and category: ${message.category}`);
+
+        // // 打印消息内容（如果是文本数据，可以转换为字符串）
+        // console.log('Message bytes:', message.bytes.toString());
+
+        // 更新缓冲区，移除已处理的消息
+        buffer = buffer.slice(messageLength);
+      } else {
+        // 如果数据不完整，等待更多数据
+        break;
+      }
+    }
   });
 
   // 监听客户端关闭连接
   socket.on('end', () => {
     console.log('Client disconnected');
-    
+
     // 从数组中删除已断开连接的客户端
     const index = clients.indexOf(socket);
     if (index !== -1) {
