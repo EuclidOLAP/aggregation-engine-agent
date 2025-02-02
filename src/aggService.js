@@ -18,10 +18,10 @@ const aggServiceImpl = {
     aggregates: (call, callback) => {
         console.log("Received gRPC request:", call.request);
 
-        const { cubeGid, vectorCoordinates } = call.request;
+        const { cubeGid, grpcVectorCoordinates } = call.request;
 
         // 假设每个请求返回一个随机值，模拟聚合计算
-        const values = vectorCoordinates.map(() => Math.random() * 100);
+        const values = grpcVectorCoordinates.map(() => Math.random() * 100);
         const nullFlags = values.map(() => false); // 这里假设没有 NULL 值
 
         const response = { cubeGid, values, nullFlags };
