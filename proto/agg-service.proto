@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package agg_service;
+
+// 聚合计算服务
+service AggService {
+  // 计算指定维度坐标的聚合值
+  rpc aggregates (AggregationRequest) returns (AggregationResponse);
+}
+
+// 聚合请求
+message AggregationRequest {
+    uint64 cubeGid = 1; // 立方体的唯一标识符
+    repeated VectorCoordinate vectorCoordinates = 2; // 维度坐标集合
+}
+
+// 维度坐标
+message VectorCoordinate {
+    repeated uint64 memberGidArr = 1; // 维度成员 ID 数组
+    uint32 measureIndex = 2; // 计算的度量索引
+}
+
+// 聚合响应
+message AggregationResponse {
+    uint64 cubeGid = 1; // 立方体的唯一标识符
+    repeated double values = 2; // 计算出的聚合值数组
+    repeated bool nullFlags = 3; // 是否为空值，与 values 一一对应
+}

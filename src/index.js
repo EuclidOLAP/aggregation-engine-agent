@@ -1,6 +1,8 @@
 const net = require('net');
 const command = require('./command');
 
+const { startGrpcServer } = require('./aggService');
+
 const clients = [];
 
 // 定义消息的数据结构
@@ -100,3 +102,21 @@ const HOST = '0.0.0.0'; // 局域网内允许所有客户端连接
 server.listen(PORT, HOST, () => {
   console.log(`TCP server listening on ${HOST}:${PORT}`);
 });
+
+/*
+ * 启动 Aggregation Engine GRPC 服务
+ */
+
+// // 监听端口
+// const agg_service_grpc_port = 50051;
+// agg_server.bindAsync(`0.0.0.0:${agg_service_grpc_port}`, grpc.ServerCredentials.createInsecure(), (err, port) => {
+//   if (err) {
+//       console.error('Failed to bind server:', err);
+//       return;
+//   }
+//   console.log(`Server is listening on port ${agg_service_grpc_port}`);
+//   agg_server.start();
+// });
+
+console.log('Starting Node.js project...');
+startGrpcServer();
