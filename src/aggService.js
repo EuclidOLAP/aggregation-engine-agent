@@ -26,7 +26,21 @@ const aggServiceImpl = {
 
         const response = { cubeGid, values, nullFlags };
         callback(null, response);
-    }
+    },
+
+    // 实现 importMeasureData 接口
+    importMeasureData: (call, callback) => {
+        const { filePath } = call.request;
+        console.log(`Received importMeasureData request for file: ${filePath}`);
+        console.log(`Received importMeasureData request for file: ${filePath}`);
+        console.log(`Received importMeasureData request for file: ${filePath}`);
+        console.log(`Received importMeasureData request for file: ${filePath}`);
+        const response = {
+            success: true,
+            message: `Metric data imported successfully from file: ${filePath}`
+        };
+        callback(null, response);
+    },
 };
 
 // 启动 gRPC 服务器

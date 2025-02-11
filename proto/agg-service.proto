@@ -6,6 +6,9 @@ package agg_service;
 service AggService {
   // 计算指定维度坐标的聚合值
   rpc aggregates (GrpcAggregationRequest) returns (GrpcAggregationResponse);
+
+  // 导入度量数据
+  rpc importMeasureData (GrpcImportMeasureRequest) returns (GrpcImportMeasureResponse);
 }
 
 // 聚合请求
@@ -25,4 +28,15 @@ message GrpcAggregationResponse {
     uint64 cubeGid = 1; // 立方体的唯一标识符
     repeated double values = 2; // 计算出的聚合值数组
     repeated bool nullFlags = 3; // 是否为空值，与 values 一一对应
+}
+
+// 导入度量数据请求
+message GrpcImportMeasureRequest {
+    string filePath = 1; // 度量数据文件的路径
+}
+
+// 导入度量数据响应
+message GrpcImportMeasureResponse {
+    bool success = 1; // 操作是否成功
+    string message = 2; // 提示消息或错误信息
 }
