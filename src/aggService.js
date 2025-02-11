@@ -1,6 +1,7 @@
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
+const { sendDataToVceCluster } = require('./vceClusterManagement');
 
 // 加载 proto 文件
 const PROTO_PATH = path.join(__dirname, '../proto/agg-service.proto');
@@ -35,6 +36,7 @@ const aggServiceImpl = {
         console.log(`Received importMeasureData request for file: ${filePath}`);
         console.log(`Received importMeasureData request for file: ${filePath}`);
         console.log(`Received importMeasureData request for file: ${filePath}`);
+        sendDataToVceCluster();
         const response = {
             success: true,
             message: `Metric data imported successfully from file: ${filePath}`

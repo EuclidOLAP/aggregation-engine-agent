@@ -96,4 +96,12 @@ function startTcpServer() {
   });
 }
 
-module.exports = { startTcpServer };
+function sendDataToVceCluster() {
+  console.log('Sending data to VCE cluster... .......................................................................');
+  console.log('Sending data to VCE cluster... .......................................................................');
+  console.log('Sending data to VCE cluster... .......................................................................');
+  console.log('Sending data to VCE cluster... .......................................................................');
+  console.log('Sending data to VCE cluster... .......................................................................');
+}
+
+module.exports = { startTcpServer, sendDataToVceCluster };
