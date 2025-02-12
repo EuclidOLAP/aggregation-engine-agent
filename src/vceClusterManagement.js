@@ -1,6 +1,9 @@
 const net = require('net');
 const command = require('./command');
 
+const fs = require('fs');
+const path = require('path');
+
 // 定义消息的数据结构
 class Message {
   constructor(length, category, bytes) {
@@ -10,8 +13,9 @@ class Message {
   }
 }
 
+const clients = [];
+
 function startTcpServer() {
-  const clients = [];
 
   console.log('TCP Server is starting...');
 
@@ -97,11 +101,40 @@ function startTcpServer() {
 }
 
 function sendDataToVceCluster() {
-  console.log('Sending data to VCE cluster... .......................................................................');
-  console.log('Sending data to VCE cluster... .......................................................................');
-  console.log('Sending data to VCE cluster... .......................................................................');
-  console.log('Sending data to VCE cluster... .......................................................................');
-  console.log('Sending data to VCE cluster... .......................................................................');
+  const directoryPath = path.join(process.cwd(), 'vce-inputs'); // 设定目录路径
+  console.log('Sending binary data to VCE cluster from directory: ', directoryPath);
+
+  // 读取目录下所有文件
+  fs.readdir(directoryPath, (err, files) => {
+    if (err) {
+      console.error('Error reading directory:', err);
+      return;
+    }
+
+    // 遍历文件列表
+    files.forEach((file) => {
+      const filePath = path.join(directoryPath, file);
+
+      // 读取文件的二进制数据
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          console.error(`Error reading file ${file}:`, err);
+          return;
+        }
+
+        // 向所有连接的客户端发送文件的二进制数据
+        clients.forEach((clientSocket) => {
+          clientSocket.write(data, (err) => {
+            if (err) {
+              console.error(`Error sending data to client: ${err}`);
+            } else {
+              console.log(`Sent binary data for file ${file} to client`);
+            }
+          });
+        });
+      });
+    });
+  });
 }
 
 module.exports = { startTcpServer, sendDataToVceCluster };
