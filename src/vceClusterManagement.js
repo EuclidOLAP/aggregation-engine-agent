@@ -114,15 +114,17 @@ function startTcpServer() {
             }
         
             // 打印解析结果
-            console.log('Data Package Capacity:', dataPackageCapacity);
-            console.log('Intention:', intention);
-            console.log('Cube GID:', cubeGid);
-            console.log('Task Group Code:', taskGroupCode);
-            console.log('Max Task Group Number:', maxTaskGroupNumber);
-            console.log('Task Group Number:', taskGroupNumber);
-            console.log('COG:', cog);
-            console.log('Float Values:', floatValues);
-            console.log('Int Flags:', intFlags);
+            console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
+            console.log('>>>>>> Data Package Capacity:', dataPackageCapacity);
+            console.log('>>>>>> Intention:', intention);
+            console.log('>>>>>> Cube GID:', cubeGid);
+            console.log('>>>>>> Task Group Code:', taskGroupCode);
+            console.log('>>>>>> Max Task Group Number:', maxTaskGroupNumber);
+            console.log('>>>>>> Task Group Number:', taskGroupNumber);
+            console.log('>>>>>> COG:', cog);
+            console.log('>>>>>> Float Values:', floatValues);
+            console.log('>>>>>> Int Flags:', intFlags);
+            console.log('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
         }
         
 
