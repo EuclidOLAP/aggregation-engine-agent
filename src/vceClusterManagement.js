@@ -67,52 +67,52 @@ function startTcpServer() {
           else if (command.INTENT__AGGREGATE_TASK_RESULT === message.category) {
             // 获取 message.bytes
             const bytes = message.bytes;
-        
+
             // 解析数据
             let offset = 0;
-        
+
             // 4 bytes - data_package_capacity
             const dataPackageCapacity = bytes.readUInt32LE(offset);
             offset += 4;
-        
+
             // 2 bytes - intention
             const intention = bytes.readUInt16LE(offset);
             offset += 2;
-        
+
             // 8 bytes - cube_gid
             const cubeGid = bytes.readBigUInt64LE(offset);
             offset += 8;
-        
+
             // 8 bytes - task_group_code
             const taskGroupCode = bytes.readBigUInt64LE(offset);
             offset += 8;
-        
+
             // 4 bytes - max_task_group_number
             const maxTaskGroupNumber = bytes.readUInt32LE(offset);
             offset += 4;
-        
+
             // 4 bytes - task_group_number
             const taskGroupNumber = bytes.readUInt32LE(offset);
             offset += 4;
-        
+
             // 8 bytes - cog
             const cog = bytes.readBigUInt64LE(offset);
             offset += 8;
-        
+
             // cog 个浮点数 (8 bytes each)
             const floatValues = [];
             for (let i = 0; i < cog; i++) {
-                floatValues.push(bytes.readDoubleLE(offset)); // 8 bytes for each float
-                offset += 8;
+              floatValues.push(bytes.readDoubleLE(offset)); // 8 bytes for each float
+              offset += 8;
             }
-        
+
             // cog 个整形标志 (1 byte each)
             const intFlags = [];
             for (let i = 0; i < cog; i++) {
-                intFlags.push(bytes.readUInt8(offset)); // 1 byte for each int flag
-                offset += 1;
+              intFlags.push(bytes.readUInt8(offset)); // 1 byte for each int flag
+              offset += 1;
             }
-        
+
             // 打印解析结果
             console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
             console.log('>>>>>> Data Package Capacity:', dataPackageCapacity);
@@ -125,8 +125,8 @@ function startTcpServer() {
             console.log('>>>>>> Float Values:', floatValues);
             console.log('>>>>>> Int Flags:', intFlags);
             console.log('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
-        }
-        
+          }
+
 
           // 更新缓冲区，移除已处理的消息
           buffer = buffer.slice(messageLength);
