@@ -42,6 +42,8 @@ function startTcpServer() {
         if (buffer.length >= messageLength) {
           // 提取完整的消息字节
           const messageBytes = buffer.slice(0, messageLength);
+          // 移除已处理的消息
+          buffer = buffer.slice(messageLength);
 
           // 创建消息数据结构
           const message = new Message(messageLength, messageCategory, messageBytes);
@@ -117,9 +119,6 @@ function startTcpServer() {
                 console.log('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<?');
 
           }
-
-          // 更新缓冲区，移除已处理的消息
-          buffer = buffer.slice(messageLength);
         } else {
           // 如果数据不完整，等待更多数据
           break;
