@@ -1,7 +1,9 @@
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
-const { sendDataToVceCluster, clients } = require('./vceClusterManagement');
+const { sendDataToVceCluster, clients, registerAggregateEventListener,
+    AggregateEventListener
+ } = require('./vceClusterManagement');
 const { genAggGroupId } = require('./aggregationGroupId');
 
 // 加载 proto 文件
@@ -74,6 +76,18 @@ const aggServiceImpl = {
         const task_group_id = genAggGroupId();
         const maxTaskNumber = clients.length - 1;
 
+        const aggListener = new AggregateEventListener(task_group_id, maxTaskNumber, (measures, null_flags) => {
+            // 检查 measures 和 null_flags 的长度是否相等
+            if (measures.length !== null_flags.length) {
+                console.error("measures 和 null_flags 的长度不相等");
+                return;
+            }
+            const response = { cubeGid, values: measures, nullFlags: null_flags.map(flag => flag ? true : false) };
+            callback(null, response);
+        });
+
+        registerAggregateEventListener(aggListener);
+
         // 将 aggTaskBinaryData 中的字节数据原封不动的发送到 clients 数组中的每个 socket
         clients.forEach((clientSocket, index) => {
             if (clientSocket && clientSocket.write) {
@@ -90,13 +104,6 @@ const aggServiceImpl = {
                 clientSocket.write(aggTaskBinaryData);
             }
         });
-
-        // 假设每个请求返回一个随机值，模拟聚合计算
-        const values = grpcVectorCoordinates.map(() => Math.random() * 100);
-        const nullFlags = values.map(() => false); // 这里假设没有 NULL 值
-
-        const response = { cubeGid, values, nullFlags };
-        callback(null, response);
     },
 
     // 实现 importMeasureData 接口

@@ -3,6 +3,7 @@ const command = require('./command');
 
 const fs = require('fs');
 const path = require('path');
+const { assert } = require('console');
 
 // 定义消息的数据结构
 class Message {
@@ -68,55 +69,8 @@ function startTcpServer() {
           }
           else if (command.INTENT__AGGREGATE_TASK_RESULT === message.category) {
 
-                // 获取 message.bytes
-                const bytes = message.bytes;
-                // 解析数据
-                let offset = 0;
-                // 4 bytes - data_package_capacity
-                const dataPackageCapacity = bytes.readUInt32LE(offset);
-                offset += 4;
-                // 2 bytes - intention
-                const intention = bytes.readUInt16LE(offset);
-                offset += 2;
-                // 8 bytes - cube_gid
-                const cubeGid = bytes.readBigUInt64LE(offset);
-                offset += 8;
-                // 8 bytes - task_group_code
-                const taskGroupCode = bytes.readBigUInt64LE(offset);
-                offset += 8;
-                // 4 bytes - max_task_group_number
-                const maxTaskGroupNumber = bytes.readUInt32LE(offset);
-                offset += 4;
-                // 4 bytes - task_group_number
-                const taskGroupNumber = bytes.readUInt32LE(offset);
-                offset += 4;
-                // 8 bytes - cog
-                const cog = bytes.readBigUInt64LE(offset);
-                offset += 8;
-                // cog 个浮点数 (8 bytes each)
-                const floatValues = [];
-                for (let i = 0; i < cog; i++) {
-                  floatValues.push(bytes.readDoubleLE(offset)); // 8 bytes for each float
-                  offset += 8;
-                }
-                // cog 个整形标志 (1 byte each)
-                const intFlags = [];
-                for (let i = 0; i < cog; i++) {
-                  intFlags.push(bytes.readUInt8(offset)); // 1 byte for each int flag
-                  offset += 1;
-                }
-                // 打印解析结果
-                console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>!');
-                console.log('>>>>>> Data Package Capacity:', dataPackageCapacity);
-                console.log('>>>>>> Intention:', intention);
-                console.log('>>>>>> Cube GID:', cubeGid);
-                console.log('>>>>>> Task Group Code:', taskGroupCode);
-                console.log('>>>>>> Max Task Group Number:', maxTaskGroupNumber);
-                console.log('>>>>>> Task Group Number:', taskGroupNumber);
-                console.log('>>>>>> COG:', cog);
-                console.log('>>>>>> Float Values:', floatValues);
-                console.log('>>>>>> Int Flags:', intFlags);
-                console.log('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<?');
+                const group_id = message.bytes.readBigUInt64LE(4+2+8);
+                AGG_LISTENERS[group_id].processTaskResult(message);
 
           }
         } else {
@@ -189,4 +143,101 @@ function sendDataToVceCluster() {
   });
 }
 
-module.exports = { startTcpServer, sendDataToVceCluster, clients };
+const AGG_LISTENERS = {};
+
+class AggregateEventListener {
+  constructor(guroupId, maxTaskNum, callback) {
+    this.guroupId = guroupId;
+    this.maxTaskNum = maxTaskNum;
+    this.callback = callback;
+    this.tasksResaults = new Array(maxTaskNum + 1).fill(null);
+
+    // 使用 SharedArrayBuffer 来记录已完成任务数量
+    this.completedTaskCount = new Int32Array(new SharedArrayBuffer(4)); // 4 字节表示已完成任务数量
+    this.completedTaskCount[0] = 0; // 初始值为 0，表示还没有任务完成
+  }
+
+  processTaskResult(taskResultMessage) {
+    
+                const bytes = taskResultMessage.bytes;
+                // 解析数据
+                let offset = 4+2+8+8+4;
+                const task_num = bytes.readUInt32LE(offset);
+                this.tasksResaults[task_num] = taskResultMessage;
+
+    // 不处理任务内容，只记录任务完成
+    while (true) {
+      // 使用 CAS 操作尝试增加已完成任务数量
+      let currentCount = Atomics.load(this.completedTaskCount, 0); // 获取当前已完成任务数量
+      if (Atomics.compareExchange(this.completedTaskCount, 0, currentCount, currentCount + 1) === currentCount) {
+
+        if (currentCount === this.maxTaskNum) {
+
+          delete AGG_LISTENERS[this.guroupId];
+
+          // 合并任务结果
+          const mergedResults = this.tasksResaults.map((result) => {
+            if (result) {
+              const bytes  = result.bytes;
+              let offset = 4 + 2 + 8 + 8 + 4 + 4;
+              const cog = bytes.readBigUInt64LE(offset);
+              offset += 8; // skip the bytes of 'cog'
+
+              // 解析 measures 和 null_flags
+              const measures = [];
+              const null_flags = [];
+
+              for (let i = 0; i < cog; i++) {
+                measures.push(bytes.readDoubleLE(offset)); // 8 bytes for each float
+                offset += 8;
+              }
+              for (let i = 0; i < cog; i++) {
+                null_flags.push(bytes.readUInt8(offset)); // 1 byte for each int flag
+                offset += 1;
+              }
+  
+              return {
+                measures,
+                null_flags,
+              };
+            }
+            return null;
+          }).filter(Boolean); // 去掉 null 值
+
+          const len = mergedResults[0].measures.length;
+          assert(mergedResults[0].null_flags.length === len);
+          for (let i=1; i<mergedResults.length; i++) {
+            assert(mergedResults[i].measures.length === len);
+            assert(mergedResults[i].null_flags.length === len);
+          }
+
+          const merged_measures = mergedResults[0].measures;
+          const merged_null_flags = mergedResults[0].null_flags;
+          for (let i=1; i<mergedResults.length; i++) {
+            const res = mergedResults[i];
+            for (let j=0; j<len; j++) {
+              merged_measures[j] += res.measures[j];
+              merged_null_flags[j] &= res.null_flags[j];
+            }
+          }
+  
+          // 打印合并后的结果
+          console.log('merged_measures merged_measures >>>>>>>>>>>>>>>>:', merged_measures);
+          console.log('merged_null_flags merged_null_flags >>>>>>>>>>>>:', merged_null_flags);
+  
+          // 调用回调并传递合并后的结果
+          this.callback(merged_measures, merged_null_flags);
+
+        }
+
+        break; // 如果 CAS 成功，跳出循环
+      }
+    }
+  }
+}
+
+function registerAggregateEventListener(aggEventListener) {
+  AGG_LISTENERS[aggEventListener.guroupId] = aggEventListener;
+}
+
+module.exports = { startTcpServer, sendDataToVceCluster, AggregateEventListener, registerAggregateEventListener, clients };
