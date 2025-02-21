@@ -1,7 +1,10 @@
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const path = require('path');
-const { sendDataToVceCluster, clients } = require('./vceClusterManagement');
+const { sendDataToVceCluster, clients, registerAggregateEventListener,
+    AggregateEventListener
+ } = require('./vceClusterManagement');
+const { genAggGroupId } = require('./aggregationGroupId');
 
 // 加载 proto 文件
 const PROTO_PATH = path.join(__dirname, '../proto/agg-service.proto');
@@ -70,30 +73,37 @@ const aggServiceImpl = {
         // 计算 aggTaskBinaryData
         const totalSize = 4 + 2 + 8 + 8 + 4 + 4 + 8 + fullBinaryData.length;
 
-        const aggTaskBinaryData = Buffer.concat([
-            uint32ToBuffer(totalSize), // 4 bytes - 总大小
-            uint16ToBuffer(10), // 2 bytes - 固定值 10
-            uint64ToBuffer(cubeGid), // 8 bytes - cubeGid
-            uint64ToBuffer(6607), // 8 bytes - 固定值 6607
-            uint32ToBuffer(7708), // 4 bytes - 固定值 7708
-            uint32ToBuffer(8809), // 4 bytes - 固定值 8809
-            uint64ToBuffer(grpcVectorCoordinates.length), // 8 bytes - grpcVectorCoordinates 数量
-            fullBinaryData // 添加 fullBinaryData 数据
-        ]);
+        const task_group_id = genAggGroupId();
+        const maxTaskNumber = clients.length - 1;
+
+        const aggListener = new AggregateEventListener(task_group_id, maxTaskNumber, (measures, null_flags) => {
+            // 检查 measures 和 null_flags 的长度是否相等
+            if (measures.length !== null_flags.length) {
+                console.error("measures 和 null_flags 的长度不相等");
+                return;
+            }
+            const response = { cubeGid, values: measures, nullFlags: null_flags.map(flag => flag ? true : false) };
+            callback(null, response);
+        });
+
+        registerAggregateEventListener(aggListener);
 
         // 将 aggTaskBinaryData 中的字节数据原封不动的发送到 clients 数组中的每个 socket
-        clients.forEach(clientSocket => {
+        clients.forEach((clientSocket, index) => {
             if (clientSocket && clientSocket.write) {
+                const aggTaskBinaryData = Buffer.concat([
+                    uint32ToBuffer(totalSize), // 4 bytes - 总大小
+                    uint16ToBuffer(10), // 2 bytes - 固定值 10
+                    uint64ToBuffer(cubeGid), // 8 bytes - cubeGid
+                    uint64ToBuffer(task_group_id), // 8 bytes - task group id
+                    uint32ToBuffer(maxTaskNumber), // 4 bytes - max task group number
+                    uint32ToBuffer(index), // 4 bytes - task group number (start with 0)
+                    uint64ToBuffer(grpcVectorCoordinates.length), // 8 bytes - grpcVectorCoordinates 数量
+                    fullBinaryData // 添加 fullBinaryData 数据
+                ]);
                 clientSocket.write(aggTaskBinaryData);
             }
         });
-
-        // 假设每个请求返回一个随机值，模拟聚合计算
-        const values = grpcVectorCoordinates.map(() => Math.random() * 100);
-        const nullFlags = values.map(() => false); // 这里假设没有 NULL 值
-
-        const response = { cubeGid, values, nullFlags };
-        callback(null, response);
     },
 
     // 实现 importMeasureData 接口
