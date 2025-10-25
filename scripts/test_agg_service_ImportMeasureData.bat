@@ -5,5 +5,5 @@ SET proto_path=D:\_temp
 SET proto_file=agg-service.proto
 
 grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
-    -d "{ \"filePath\": \"______XXXXXXXXXXXXXXXXXXXXXXXX______\" }" ^
+    -d "{ \"filePath\": \"oss\" }" ^
     %server% agg_service.AggService/importMeasureData
